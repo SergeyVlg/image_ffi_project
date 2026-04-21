@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "image_processor",
+]
+resolver = "2"
