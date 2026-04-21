@@ -1,5 +1,9 @@
+mod plugin_loader;
+
+use std::ffi::CString;
 use std::fs;
 use clap::{ Parser };
+use crate::plugin_loader::Plugin;
 
 #[derive(Parser)]
 #[command(name = "image-processor", about = "CLI-утилита для обработки изображений с помощью плагинов", version)]
@@ -18,17 +22,23 @@ struct Cli {
 
 
 fn main() -> anyhow::Result<()> {
-    println!("Hello, world!");
-
     let cli = Cli::try_parse()?;
     let image_bytes = fs::read(&cli.input)?;
     let image = image::load_from_memory(&image_bytes)?;
 
     let rgba = image.to_rgba8();
     let (width, height) = rgba.dimensions();
-    let pixels: Vec<u8> = rgba.into_raw();
+    let mut pixels: Vec<u8> = rgba.into_raw();
 
     //TODO вызов функции обработки через плагины
+    let plugin = Plugin::new(&cli.plugin_path)?;
+    let plugin_interface = plugin.interface()?;
+
+    let params = CString::new(cli.params.as_str())?;
+
+    unsafe {
+        (plugin_interface.process_image)(width, height, pixels.as_mut_ptr(), params.as_ptr());
+    }
 
     Ok(())
 }
