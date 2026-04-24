@@ -1,5 +1,10 @@
 ﻿use libloading::{Library, Symbol};
+use crate::error::ProcessError;
+use crate::error::ProcessError::Validation;
 
+/// Обрабатывает исходное изображение
+/// # Safety
+/// * Размер буфера rgba должен быть равен произведению width * height * 4
 type ProcessImageFn = unsafe extern "C" fn(
     width: u32,
     height: u32,
@@ -14,16 +19,14 @@ pub struct Plugin {
 }
 
 impl Plugin {
-    pub fn new(filename: &str) -> Result<Self, libloading::Error> {
+    pub fn new(filename: &str) -> Result<Self, ProcessError> {
         Ok(Plugin {
             plugin: unsafe { Library::new(filename) }?,
         })
     }
 
-    pub fn process_image(&self, width: u32, height: u32, rgba_data: &mut [u8], params: &str) -> Result<(), libloading::Error> {
-        if !Self::check_image_params(width, height, rgba_data) {
-            return Err(libloading::Error::DlOpen { desc: "invalid image parameters".to_string() });
-        }
+    pub fn process_image(&self, width: u32, height: u32, rgba_data: &mut [u8], params: &str) -> Result<(), ProcessError> {
+        Self::check_image_params(width, height, rgba_data)?;
 
         let rgba_ptr = rgba_data.as_mut_ptr();
         let rgba_len = rgba_data.len();
@@ -40,16 +43,16 @@ impl Plugin {
         Ok(())
     }
 
-    fn check_image_params(width: u32, height: u32, rgba_data: &mut [u8]) -> bool {
+    fn check_image_params(width: u32, height: u32, rgba_data: &mut [u8]) -> Result<(), ProcessError> {
         let expected_len = (width as usize)
             .checked_mul(height as usize)
             .and_then(|v| v.checked_mul(4))
-            .ok_or("image size overflow")?;
+            .ok_or(Validation("image size overflow".to_string()))?;
 
         if rgba_data.len() != expected_len {
-            return false; //invalid RGBA buffer length
+            return Err(Validation("invalid RGBA buffer length".to_string()));
         }
 
-        true
+        Ok(())
     }
 }

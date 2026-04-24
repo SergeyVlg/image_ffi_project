@@ -1,4 +1,5 @@
 mod plugin_loader;
+mod error;
 
 use crate::plugin_loader::Plugin;
 use clap::Parser;
@@ -18,7 +19,6 @@ struct Cli {
     #[arg(long)]
     plugin_path: String,
 }
-
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::try_parse()?;
