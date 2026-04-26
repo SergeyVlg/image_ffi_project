@@ -2,9 +2,14 @@
 use crate::error::ProcessError;
 use crate::error::ProcessError::Validation;
 
-/// Обрабатывает исходное изображение
+/// Processing source image
 /// # Safety
-/// * Размер буфера rgba должен быть равен произведению width * height * 4
+/// - `rgba_ptr` must be valid for writes of `rgba_len` bytes.
+/// - `rgba_len` must equal `width * height * 4`.
+/// - `params_ptr` must be valid for reads of `params_len` bytes.
+/// - `params_ptr` must point to a valid UTF-8 JSON buffer if JSON parsing expects that.
+/// - The memory referenced by `rgba_ptr` and `params_ptr` must remain valid for the duration of the call.
+/// - `rgba_ptr` must not alias any other mutable reference.
 type ProcessImageFn = unsafe extern "C" fn(
     width: u32,
     height: u32,

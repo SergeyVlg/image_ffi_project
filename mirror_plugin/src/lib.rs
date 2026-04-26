@@ -6,8 +6,15 @@ struct MirrorParams {
     vertical: bool
 }
 
+/// # Safety
+/// - `rgba_ptr` must be valid for writes of `rgba_len` bytes.
+/// - `rgba_len` must equal `width * height * 4`.
+/// - `params_ptr` must be valid for reads of `params_len` bytes.
+/// - `params_ptr` must point to a valid UTF-8 JSON buffer if JSON parsing expects that.
+/// - The memory referenced by `rgba_ptr` and `params_ptr` must remain valid for the duration of the call.
+/// - `rgba_ptr` must not alias any other mutable reference.
 #[unsafe(no_mangle)]
-extern "C" fn process_image(
+pub unsafe extern "C" fn process_image(
     width: u32,
     height: u32,
     rgba_ptr: *mut u8,
@@ -51,7 +58,13 @@ fn validate_input(width: u32,
         return false;
     }
 
-    let expected_len = width as usize * height as usize * 4;
+    let expected_len = match (width as usize)
+        .checked_mul(height as usize)
+        .and_then(|v| v.checked_mul(4))
+    {
+        Some(v) => v,
+        None => return false,
+    };
 
     rgba_len == expected_len
 }
