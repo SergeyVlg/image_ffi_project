@@ -22,11 +22,11 @@ pub unsafe extern "C" fn process_image(
     rgba_ptr: *mut u8,
     rgba_len: usize,
     params_ptr: *const u8,
-    params_len: usize) {
+    params_len: usize) -> i32 {
     println!("Blur image {width} x {height}");
 
     if !validate_input(width, height, rgba_ptr, rgba_len, params_ptr, params_len) {
-        return;
+        return 1;
     }
 
     let rgba: &mut [u8] = unsafe { std::slice::from_raw_parts_mut(rgba_ptr, rgba_len) };
@@ -36,12 +36,13 @@ pub unsafe extern "C" fn process_image(
         Ok(v) => v,
         Err(e) => {
             eprintln!("Invalid JSON params: {e}");
-            return;
+            return 2;
         }
     };
 
     println!("Blur params: {params:?}");
     blur_image(rgba, width as usize, height as usize, params.radius, params.iterations);
+    0
 }
 
 fn validate_input(width: u32,
@@ -145,5 +146,6 @@ fn blur_image(rgba: &mut [u8], width: usize, height: usize, radius: u32, iterati
         std::mem::swap(&mut src, &mut dst);
     }
 
+    println!();
     rgba.copy_from_slice(&src);
 }

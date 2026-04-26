@@ -17,7 +17,7 @@ type ProcessImageFn = unsafe extern "C" fn(
     rgba_len: usize,
     params_ptr: *const u8,
     params_len: usize,
-);
+) -> i32;
 
 pub struct Plugin {
     plugin: Library,
@@ -42,7 +42,11 @@ impl Plugin {
 
         unsafe {
             let function: Symbol<'_, ProcessImageFn> = self.plugin.get(b"process_image")?;
-            function(width, height, rgba_ptr, rgba_len, params_ptr, params_len);
+            let result = function(width, height, rgba_ptr, rgba_len, params_ptr, params_len);
+
+            if result != 0 {
+                return Err(ProcessError::ImageProcessing(result));
+            }
         }
 
         Ok(())

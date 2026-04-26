@@ -20,11 +20,11 @@ pub unsafe extern "C" fn process_image(
     rgba_ptr: *mut u8,
     rgba_len: usize,
     params_ptr: *const u8,
-    params_len: usize) {
+    params_len: usize) -> i32 {
     println!("Mirroring image {width} x {height}");
 
     if !validate_input(width, height, rgba_ptr, rgba_len, params_ptr, params_len) {
-        return;
+        return 1;
     }
 
     let rgba: &mut [u8] = unsafe { std::slice::from_raw_parts_mut(rgba_ptr, rgba_len) };
@@ -34,7 +34,7 @@ pub unsafe extern "C" fn process_image(
         Ok(v) => v,
         Err(e) => {
             eprintln!("Invalid JSON params: {e}");
-            return;
+            return 2;
         }
     };
 
@@ -45,6 +45,7 @@ pub unsafe extern "C" fn process_image(
     if params.vertical {
         vertical_mirror(rgba, width as usize, height as usize);
     }
+    0
 }
 
 fn validate_input(width: u32,
