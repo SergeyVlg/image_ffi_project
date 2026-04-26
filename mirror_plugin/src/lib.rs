@@ -7,14 +7,14 @@ struct MirrorParams {
 }
 
 #[unsafe(no_mangle)]
-unsafe extern "C" fn process_image(
+extern "C" fn process_image(
     width: u32,
     height: u32,
     rgba_ptr: *mut u8,
     rgba_len: usize,
     params_ptr: *const u8,
     params_len: usize) {
-    println!("{width} x {height}");
+    println!("Mirroring image {width} x {height}");
 
     if !validate_input(width, height, rgba_ptr, rgba_len, params_ptr, params_len) {
         return;
@@ -62,12 +62,11 @@ fn horizontal_mirror(rgba: &mut [u8], width: usize) {
     for row in rgba.chunks_exact_mut(row_len) {
         for x in 0..(width / 2) {
             let left = x * 4;
-            let right = width - (1 - x) * 4; //??
+            let right = (width - 1 - x) * 4;
 
-            row.swap(left, right);
-            row.swap(left + 1, right + 1);
-            row.swap(left + 2, right + 2);
-            row.swap(left + 3, right + 3);
+            for i in 0..4 {
+                row.swap(left + i, right + i);
+            }
         }
     }
 }

@@ -30,7 +30,16 @@ fn main() -> anyhow::Result<()> {
     let mut pixels = rgba.into_raw();
 
     let plugin = Plugin::new(&cli.plugin_path)?;
-    plugin.process_image(width, height, &mut pixels, &cli.params)?;
+    let params = fs::read_to_string(&cli.params)?;
+
+    plugin.process_image(width, height, &mut pixels, &params)?;
+    println!("Processing done, saving...");
+
+    let processed_image = image::RgbaImage::from_raw(width, height, pixels)
+        .ok_or_else(|| anyhow::anyhow!("image buffer contains corrupted image"))?;
+
+    processed_image.save(&cli.output)?;
+    println!("Image successfully saved");
 
     Ok(())
 }
