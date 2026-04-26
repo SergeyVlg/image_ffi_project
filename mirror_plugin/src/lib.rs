@@ -36,7 +36,7 @@ extern "C" fn process_image(
     }
 
     if params.vertical {
-        vertical_mirror(rgba, height as usize);
+        vertical_mirror(rgba, width as usize, height as usize);
     }
 }
 
@@ -71,17 +71,15 @@ fn horizontal_mirror(rgba: &mut [u8], width: usize) {
     }
 }
 
-fn vertical_mirror(rgba: &mut [u8], height: usize) {
-    todo!()
-    /*let column_len = height * 4;
-    for column in rgba.chunks_exact_mut(column_len) {
-        for y in 0..(height / 2) {
-            let top = y * 4;
-            let bottom = top * 4;
-            column.swap(top, bottom);
-            column.swap(top + 1, bottom + 1);
-            column.swap(top + 2, bottom + 2);
-            column.swap(top + 3, bottom + 3);
+fn vertical_mirror(rgba: &mut [u8], width: usize, height: usize) {
+    let row_len = width * 4;
+
+    for y in 0..(height / 2) {
+        let top_start = y * row_len;
+        let bottom_start = (height - 1 - y) * row_len;
+
+        for i in 0..row_len {
+            rgba.swap(top_start + i, bottom_start + i);
         }
-    }*/
+    }
 }
