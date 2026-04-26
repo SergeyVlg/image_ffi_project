@@ -91,8 +91,10 @@ fn vertical_mirror(rgba: &mut [u8], width: usize, height: usize) {
         let top_start = y * row_len;
         let bottom_start = (height - 1 - y) * row_len;
 
-        for i in 0..row_len {
-            rgba.swap(top_start + i, bottom_start + i);
-        }
+        let (head, tail) = rgba.split_at_mut(bottom_start);
+        let top_row = &mut head[top_start..top_start + row_len];
+        let bottom_row = &mut tail[..row_len];
+
+        top_row.swap_with_slice(bottom_row);
     }
 }
