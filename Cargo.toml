@@ -1,5 +1,5 @@
 [workspace]
-members = [
+members = ["blur_plugin",
     "image_processor", "mirror_plugin",
 ]
 resolver = "2"
