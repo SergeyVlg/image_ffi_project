@@ -3,7 +3,7 @@ mod error;
 
 use crate::plugin_loader::Plugin;
 use clap::Parser;
-use std::fs;
+use std::{fs, process};
 use crate::error::ProcessError;
 
 #[derive(Parser)]
@@ -21,7 +21,22 @@ struct Cli {
     plugin_path: String,
 }
 
-fn main() -> Result<(), ProcessError> {
+fn main() {
+
+    if let Err(e) = run() {
+        match e {
+            ProcessError::ParseError(clap_err) => {
+                clap_err.exit(); //для красивого вывода в консоль через Display
+            }
+            other_error => {
+                eprintln!("{}", other_error);
+                process::exit(1);
+            }
+        }
+    }
+}
+
+fn run() -> Result<(), ProcessError> {
     let cli = Cli::try_parse()?;
     let image_bytes = fs::read(&cli.input)?;
     let image = image::load_from_memory(&image_bytes)?;
@@ -30,7 +45,8 @@ fn main() -> Result<(), ProcessError> {
     let (width, height) = rgba.dimensions();
     let mut pixels = rgba.into_raw();
 
-    let plugin = Plugin::new(&cli.plugin_path)?;
+    let plugin_file = format!("{}{}_plugin.dll", &cli.plugin_path, &cli.plugin);
+    let plugin = Plugin::new(&plugin_file)?;
     let params = fs::read_to_string(&cli.params)?;
 
     plugin.process_image(width, height, &mut pixels, &params)?;
@@ -40,7 +56,7 @@ fn main() -> Result<(), ProcessError> {
         .ok_or_else(|| ProcessError::CorruptedImage)?;
 
     processed_image.save(&cli.output)?;
-    println!("Image successfully saved");
+    println!("Image successfully saved.");
 
     Ok(())
 }

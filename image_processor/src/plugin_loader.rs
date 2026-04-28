@@ -4,6 +4,7 @@ use crate::error::ProcessError::Validation;
 
 /// Processing source image
 /// # Safety
+/// - `width` and `height` must be greater than 0.
 /// - `rgba_ptr` must be valid for writes of `rgba_len` bytes.
 /// - `rgba_len` must equal `width * height * 4`.
 /// - `params_ptr` must be valid for reads of `params_len` bytes.
@@ -53,6 +54,10 @@ impl Plugin {
     }
 
     fn check_image_params(width: u32, height: u32, rgba_data: &mut [u8]) -> Result<(), ProcessError> {
+        if width == 0 || height == 0 {
+            return Err(Validation("width and height must be greater than 0".to_string()));
+        }
+
         let expected_len = (width as usize)
             .checked_mul(height as usize)
             .and_then(|v| v.checked_mul(4))

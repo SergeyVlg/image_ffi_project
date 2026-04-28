@@ -7,6 +7,7 @@ struct MirrorParams {
 }
 
 /// # Safety
+/// - `width` and `height` must be greater than 0.
 /// - `rgba_ptr` must be valid for writes of `rgba_len` bytes.
 /// - `rgba_len` must equal `width * height * 4`.
 /// - `params_ptr` must be valid for reads of `params_len` bytes.
@@ -55,7 +56,11 @@ fn validate_input(width: u32,
                   params_ptr: *const u8,
                   params_len: usize) -> bool {
 
-    if rgba_ptr.is_null() || params_ptr.is_null() || params_len == 0 {
+    if width == 0 ||
+        height == 0 ||
+        rgba_ptr.is_null() ||
+        params_ptr.is_null() ||
+        params_len == 0 {
         return false;
     }
 
@@ -97,5 +102,129 @@ fn vertical_mirror(rgba: &mut [u8], width: usize, height: usize) {
         let bottom_row = &mut tail[..row_len];
 
         top_row.swap_with_slice(bottom_row);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Каждый пиксель — это 4 байта (RGBA)
+    // Строка 0: [Пиксель A, Пиксель B]
+    // Строка 1: [Пиксель C, Пиксель D]
+    fn create_test_image() -> Vec<u8> {
+        vec![
+            1, 2, 3, 4,       5, 6, 7, 8,
+            9, 10, 11, 12,    13, 14, 15, 16,
+        ]
+    }
+
+    #[test]
+    fn test_horizontal_mirror_logic() {
+        let mut img = create_test_image();
+        horizontal_mirror(&mut img, 2);
+
+        let expected = vec![
+            5, 6, 7, 8,       1, 2, 3, 4,
+            13, 14, 15, 16,   9, 10, 11, 12,
+        ];
+        assert_eq!(img, expected);
+    }
+
+    #[test]
+    fn test_vertical_mirror_logic() {
+        let mut img = create_test_image();
+        vertical_mirror(&mut img, 2, 2);
+
+        let expected = vec![
+            9, 10, 11, 12,    13, 14, 15, 16,
+            1, 2, 3, 4,       5, 6, 7, 8,
+        ];
+        assert_eq!(img, expected);
+    }
+
+    #[test]
+    fn test_process_image_success() {
+        let mut img = create_test_image();
+        let params = b"{\"horizontal\": true, \"vertical\": true}";
+
+        let result = unsafe {
+            process_image(
+                2, 2,
+                img.as_mut_ptr(), img.len(),
+                params.as_ptr(), params.len()
+            )
+        };
+
+        assert_eq!(result, 0);
+
+        let expected = vec![
+            13, 14, 15, 16,   9, 10, 11, 12,
+            5, 6, 7, 8,       1, 2, 3, 4,
+        ];
+        assert_eq!(img, expected);
+    }
+
+    #[test]
+    fn test_process_image_validation_error_len() {
+        let mut img = create_test_image();
+        let params = b"{\"horizontal\": true, \"vertical\": false}";
+
+        let result = unsafe {
+            process_image(
+                2, 2,
+                img.as_mut_ptr(), 15, // Намеренно передаем неверную длину (15 вместо 16)
+                params.as_ptr(), params.len()
+            )
+        };
+
+        assert_eq!(result, 1);
+    }
+
+    #[test]
+    fn test_process_image_json_error() {
+        let mut img = create_test_image();
+        let params = b"{\"horizontal\": true, \"vertical\": typo}"; // Ошибка синтаксиса JSON
+
+        let result = unsafe {
+            process_image(
+                2, 2,
+                img.as_mut_ptr(), img.len(),
+                params.as_ptr(), params.len()
+            )
+        };
+
+        assert_eq!(result, 2);
+    }
+
+    #[test]
+    fn test_process_image_null_pointer() {
+        let params = b"{\"horizontal\": true, \"vertical\": true}";
+
+        let result = unsafe {
+            process_image(
+                2, 2,
+                std::ptr::null_mut(), 16, // Передаем нулевой указатель
+                params.as_ptr(), params.len()
+            )
+        };
+
+        assert_eq!(result, 1);
+    }
+
+    #[test]
+    fn test_process_image_zero_dimensions() {
+        let mut img: Vec<u8> = vec![];
+        let params = b"{\"horizontal\": true, \"vertical\": true}";
+
+        let result = unsafe {
+            process_image(
+                0, 0, // Ширина и высота равны 0
+                img.as_mut_ptr(), 0,
+                params.as_ptr(), params.len()
+            )
+        };
+
+        assert_eq!(result, 1);
     }
 }
