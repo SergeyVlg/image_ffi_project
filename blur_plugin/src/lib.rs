@@ -42,8 +42,16 @@ pub unsafe extern "C" fn process_image(
         }
     };
 
+    let radius: isize = match params.radius.try_into() {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("Invalid radius: {e}");
+            return 3;
+        }
+    };
+
     println!("Blur params: {params:?}");
-    blur_image(rgba, width as usize, height as usize, params.radius, params.iterations);
+    blur_image(rgba, width as usize, height as usize, radius, params.iterations);
     0
 }
 
@@ -73,12 +81,11 @@ fn validate_input(width: u32,
     rgba_len == expected_len
 }
 
-fn blur_image(rgba: &mut [u8], width: usize, height: usize, radius: u32, iterations: u32) {
+fn blur_image(rgba: &mut [u8], width: usize, height: usize, radius: isize, iterations: u32) {
     if width == 0 || height == 0 || radius == 0 || iterations == 0 {
         return;
     }
 
-    let radius = radius as isize;
     let iterations = iterations as usize;
     let width_i = width as isize;
     let height_i = height as isize;
