@@ -1,5 +1,6 @@
 use std::ffi::c_char;
 use std::io;
+use std::io::ErrorKind::InvalidData;
 use std::io::Write;
 use serde::Deserialize;
 
@@ -51,7 +52,10 @@ pub unsafe extern "C" fn process_image(
     };
 
     println!("Blur params: {params:?}");
-    blur_image(rgba, width as usize, height as usize, radius, params.iterations);
+    if let Err(err) = blur_image(rgba, width as usize, height as usize, radius, params.iterations) {
+        eprintln!("Blur image error: {err}");
+        return 4;
+    }
     0
 }
 
@@ -81,9 +85,9 @@ fn validate_input(width: u32,
     rgba_len == expected_len
 }
 
-fn blur_image(rgba: &mut [u8], width: usize, height: usize, radius: isize, iterations: u32) {
-    if width == 0 || height == 0 || radius == 0 || iterations == 0 {
-        return;
+fn blur_image(rgba: &mut [u8], width: usize, height: usize, radius: isize, iterations: u32) -> io::Result<()> {
+    if radius == 0 || iterations == 0 {
+        return Err(io::Error::new(InvalidData, "radius and iterations must be greater than 0"));
     }
 
     let iterations = iterations as usize;
@@ -117,7 +121,7 @@ fn blur_image(rgba: &mut [u8], width: usize, height: usize, radius: isize, itera
 
             let percent = ((done_rows + 1) * 100) / total_rows;
             print!("\rIterations processing...{:>3}%", percent);
-            io::stdout().flush().unwrap();
+            io::stdout().flush()?;
 
             for x in 0..width {
                 let mut sum_r = 0.0f32;
@@ -161,6 +165,8 @@ fn blur_image(rgba: &mut [u8], width: usize, height: usize, radius: isize, itera
 
     println!();
     rgba.copy_from_slice(&src);
+
+    Ok(())
 }
 
 #[cfg(test)]
