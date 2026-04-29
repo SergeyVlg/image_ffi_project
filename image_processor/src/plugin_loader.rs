@@ -44,6 +44,14 @@ impl Plugin {
         let params_ptr = c_params.as_ptr();
         let params_len = c_params.as_bytes().len();
 
+        // # SAFETY
+        // - `width` and `height` greater than 0.
+        // - `rgba_ptr` is valid for writes of `rgba_len` bytes.
+        // - `rgba_len` equal `width * height * 4`.
+        // - `params_ptr` valid for reads of `params_len` bytes.
+        // - `params_ptr` points to a valid C string with params at JSON structure.
+        // - The memory referenced by `rgba_ptr` and `params_ptr` remain valid for the duration of the call.
+        // - `rgba_ptr` not alias any other mutable reference.
         unsafe {
             let function: Symbol<'_, ProcessImageFn> = self.plugin.get(b"process_image")?;
             let result = function(width, height, rgba_ptr, rgba_len, params_ptr, params_len);
