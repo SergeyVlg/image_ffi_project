@@ -1,4 +1,5 @@
-﻿use libloading::{Library, Symbol};
+﻿use std::path::PathBuf;
+use libloading::{Library, Symbol};
 use crate::error::ProcessError;
 use crate::error::ProcessError::Validation;
 
@@ -25,7 +26,7 @@ pub struct Plugin {
 }
 
 impl Plugin {
-    pub fn new(filename: &str) -> Result<Self, ProcessError> {
+    pub fn new(filename: PathBuf) -> Result<Self, ProcessError> {
         Ok(Plugin {
             plugin: unsafe { Library::new(filename) }?,
         })

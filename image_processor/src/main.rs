@@ -4,6 +4,8 @@ mod error;
 use crate::plugin_loader::Plugin;
 use clap::Parser;
 use std::{fs, process};
+use std::path::PathBuf;
+use libloading::library_filename;
 use crate::error::ProcessError;
 
 #[derive(Parser)]
@@ -18,7 +20,7 @@ struct Cli {
     #[arg(long)]
     params: String,
     #[arg(long)]
-    plugin_path: String,
+    plugin_path: PathBuf,
 }
 
 fn main() {
@@ -45,8 +47,13 @@ fn run() -> Result<(), ProcessError> {
     let (width, height) = rgba.dimensions();
     let mut pixels = rgba.into_raw();
 
-    let plugin_file = format!("{}{}_plugin.dll", &cli.plugin_path, &cli.plugin);
-    let plugin = Plugin::new(&plugin_file)?;
+    let plugin_file_name = format!("{}_plugin", cli.plugin);
+    let cross_plugin_file_name = library_filename(plugin_file_name);
+
+    let mut plugin_path = cli.plugin_path;
+    plugin_path.push(cross_plugin_file_name);
+
+    let plugin = Plugin::new(plugin_path)?;
     let params = fs::read_to_string(&cli.params)?;
 
     plugin.process_image(width, height, &mut pixels, &params)?;
