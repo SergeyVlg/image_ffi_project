@@ -1,4 +1,6 @@
-﻿use std::path::PathBuf;
+﻿use std::ffi::{c_char, CString};
+use std::path::PathBuf;
+use std::str::FromStr;
 use libloading::{Library, Symbol};
 use crate::error::ProcessError;
 use crate::error::ProcessError::Validation;
@@ -9,7 +11,7 @@ use crate::error::ProcessError::Validation;
 /// - `rgba_ptr` must be valid for writes of `rgba_len` bytes.
 /// - `rgba_len` must equal `width * height * 4`.
 /// - `params_ptr` must be valid for reads of `params_len` bytes.
-/// - `params_ptr` must point to a valid UTF-8 JSON buffer if JSON parsing expects that.
+/// - `params_ptr` must point to a valid C string with params at JSON structure.
 /// - The memory referenced by `rgba_ptr` and `params_ptr` must remain valid for the duration of the call.
 /// - `rgba_ptr` must not alias any other mutable reference.
 type ProcessImageFn = unsafe extern "C" fn(
@@ -17,7 +19,7 @@ type ProcessImageFn = unsafe extern "C" fn(
     height: u32,
     rgba_ptr: *mut u8,
     rgba_len: usize,
-    params_ptr: *const u8,
+    params_ptr: *const c_char,
     params_len: usize,
 ) -> i32;
 
@@ -38,9 +40,9 @@ impl Plugin {
         let rgba_ptr = rgba_data.as_mut_ptr();
         let rgba_len = rgba_data.len();
 
-        let params_bytes = params.as_bytes();
-        let params_ptr = params_bytes.as_ptr();
-        let params_len = params_bytes.len();
+        let c_params = CString::from_str(params)?;
+        let params_ptr = c_params.as_ptr();
+        let params_len = c_params.as_bytes().len();
 
         unsafe {
             let function: Symbol<'_, ProcessImageFn> = self.plugin.get(b"process_image")?;

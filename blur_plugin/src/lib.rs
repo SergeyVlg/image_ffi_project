@@ -1,3 +1,4 @@
+use std::ffi::c_char;
 use std::io;
 use std::io::Write;
 use serde::Deserialize;
@@ -13,7 +14,7 @@ struct BlurParams {
 /// - `rgba_ptr` must be valid for writes of `rgba_len` bytes.
 /// - `rgba_len` must equal `width * height * 4`.
 /// - `params_ptr` must be valid for reads of `params_len` bytes.
-/// - `params_ptr` must point to a valid UTF-8 JSON buffer if JSON parsing expects that.
+/// - `params_ptr` must point to a valid C string with params at JSON structure.
 /// - The memory referenced by `rgba_ptr` and `params_ptr` must remain valid for the duration of the call.
 /// - `rgba_ptr` must not alias any other mutable reference.
 #[unsafe(no_mangle)]
@@ -22,7 +23,7 @@ pub unsafe extern "C" fn process_image(
     height: u32,
     rgba_ptr: *mut u8,
     rgba_len: usize,
-    params_ptr: *const u8,
+    params_ptr: *const c_char,
     params_len: usize) -> i32 {
     println!("Blur image {width} x {height}");
 
@@ -31,7 +32,7 @@ pub unsafe extern "C" fn process_image(
     }
 
     let rgba: &mut [u8] = unsafe { std::slice::from_raw_parts_mut(rgba_ptr, rgba_len) };
-    let params_bytes: &[u8] = unsafe { std::slice::from_raw_parts(params_ptr, params_len) };
+    let params_bytes = unsafe { std::slice::from_raw_parts(params_ptr as *const u8, params_len) };
 
     let params: BlurParams = match serde_json::from_slice(params_bytes) {
         Ok(v) => v,
@@ -50,7 +51,7 @@ fn validate_input(width: u32,
                   height: u32,
                   rgba_ptr: *mut u8,
                   rgba_len: usize,
-                  params_ptr: *const u8,
+                  params_ptr: *const c_char,
                   params_len: usize) -> bool {
 
     if width == 0 ||
@@ -208,13 +209,13 @@ mod tests {
     #[test]
     fn test_process_image_success() {
         let mut img = create_test_image();
-        let params = b"{\"radius\": 1, \"iterations\": 1}";
+        let params = c"{\"radius\": 1, \"iterations\": 1}";
 
         let result = unsafe {
             process_image(
                 3, 3,
                 img.as_mut_ptr(), img.len(),
-                params.as_ptr(), params.len()
+                params.as_ptr(), params.count_bytes()
             )
         };
 
@@ -228,13 +229,13 @@ mod tests {
     #[test]
     fn test_process_image_validation_error_dimensions() {
         let mut img = create_test_image();
-        let params = b"{\"radius\": 1, \"iterations\": 1}";
+        let params = c"{\"radius\": 1, \"iterations\": 1}";
 
         let result = unsafe {
             process_image(
                 0, 3,
                 img.as_mut_ptr(), img.len(),
-                params.as_ptr(), params.len()
+                params.as_ptr(), params.count_bytes()
             )
         };
 
@@ -244,13 +245,13 @@ mod tests {
     #[test]
     fn test_process_image_validation_error_buffer_len() {
         let mut img = create_test_image();
-        let params = b"{\"radius\": 1, \"iterations\": 1}";
+        let params = c"{\"radius\": 1, \"iterations\": 1}";
 
         let result = unsafe {
             process_image(
                 3, 3,
                 img.as_mut_ptr(), 35, // Ожидается 36 (3*3*4), передаем 35
-                params.as_ptr(), params.len()
+                params.as_ptr(), params.count_bytes()
             )
         };
 
@@ -260,13 +261,13 @@ mod tests {
     #[test]
     fn test_process_image_json_error_missing_fields() {
         let mut img = create_test_image();
-        let params = b"{\"radius\": 1}";
+        let params = c"{\"radius\": 1}";
 
         let result = unsafe {
             process_image(
                 3, 3,
                 img.as_mut_ptr(), img.len(),
-                params.as_ptr(), params.len()
+                params.as_ptr(), params.count_bytes()
             )
         };
 
@@ -275,13 +276,13 @@ mod tests {
 
     #[test]
     fn test_process_image_null_pointer() {
-        let params = b"{\"radius\": 1, \"iterations\": 1}";
+        let params = c"{\"radius\": 1, \"iterations\": 1}";
 
         let result = unsafe {
             process_image(
                 3, 3,
                 std::ptr::null_mut(), 36,
-                params.as_ptr(), params.len()
+                params.as_ptr(), params.count_bytes()
             )
         };
 

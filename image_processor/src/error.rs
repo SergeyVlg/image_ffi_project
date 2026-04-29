@@ -1,4 +1,5 @@
-﻿use thiserror::Error;
+﻿use std::ffi::NulError;
+use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub(super) enum ProcessError {
@@ -6,6 +7,8 @@ pub(super) enum ProcessError {
     LibLoading(#[from] libloading::Error),
     #[error("validation error: {0}")]
     Validation(String),
+    #[error("params error: contains nul byte")]
+    ParamsFormatError(#[from] NulError),
     #[error("image processing error, code {0}")]
     ImageProcessing(i32),
     #[error(transparent)]
